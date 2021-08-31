@@ -1,189 +1,484 @@
-import org.apache.tools.ant.taskdefs.condition.Os 
+apply plugin: "java"
+apply plugin: "com.install4j.gradle"
 
-plugins {
-  id "com.install4j.gradle" version "8.0.5"
-  id "com.dorongold.task-tree" version "1.5"
-}
+sourceCompatibility = 11
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 
-allprojects {
-    apply plugin: "eclipse"
-    apply plugin: "idea"
-
-    version = '2.2.5'
-
-    ext {
-        appName = "GaiaSky"
-        gdxVersion = "1.9.12"
-        lwjglVersion = "3.2.3"
-        jcommanderVersion = "1.78"
-        slf4jVersion = "1.7.25"
-        sparkjavaVersion = "2.7.2"
-        gsonVersion = "2.8.0"
-        jafamaVersion = "2.1.0"
-        compressVersion = "1.20"
-        commonsioVersion = "2.6"
-        py4jVersion = "0.10.8.1"
-        oshiVersion = "4.0.0"
-        jsampVersion = "1.3.7"
-        sdl2gdxVersion = "1.0.4"
-    }
-
-    repositories {
-        mavenCentral()
-        jcenter()
-        maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
-        maven { url "https://oss.sonatype.org/content/repositories/releases/" }
-        maven { url "https://mvnrepository.com/artifact/xmlrpc/xmlrpc" }
-        maven { url "http://nexus.vamdc.org/nexus/content/repositories/releases" }
-    }
-}
-
-project(":core") {
-    apply plugin: "java-library"
-
-    def cmd = "git describe --abbrev=0 --tags HEAD"
-    def proc = cmd.execute()
-    project.ext.tag = proc.text.trim()
-
-    cmd = "git rev-parse --short HEAD"
-    proc = cmd.execute()
-    project.ext.rev = proc.text.trim()
-
-    if (Os.isFamily(Os.FAMILY_WINDOWS)) {
-        project.ext.system = "Windows10 x86_64"
-    }else {
-        cmd = "uname -snmr"
-        proc = cmd.execute()
-        project.ext.system = proc.text.trim()
-    }
-
-    cmd = "whoami"
-    proc = cmd.execute()
-    project.ext.builder = proc.text.trim()
-
-    project.ext.buildtime = new Date()
-
-    version = "$tag"
-
-    println ""
-    println "CURRENT SYSTEM"
-    println "=============="
-    println "java version: " + JavaVersion.current().toString()
-    println "system: $system"
-
-    println ""
-    println "GAIA SKY"
-    println "========"
-    println "git tag: $tag"
-    println "git rev: $rev"
-    println "buildtime: $buildtime"
-    println "builder: $builder"
-    println ""
-
-
-    // Set some build variables
-    project.ext.baseDir = System.getProperty("user.dir")
-    project.ext.tagRev = project.tag + "." + project.rev
-    project.ext.distName = "gaiasky-$tagRev"
-    project.ext.releasesDir = "$baseDir/releases"
-    project.ext.distDir = "$releasesDir/$distName"
-    project.ext.packageName = "packages-$tagRev"
-    project.ext.packageDir = "$releasesDir/$packageName"
-
-    println ""
-    println "BUILD VARIABLES AND INFO"
-    println "========================"
-    println "base dir: $baseDir"
-    println "tag.rev: $tagRev"
-    println "dist name: $distName"
-    println "dist dir: $distDir"
-    println "packages name: $packageName"
-    println "packages dir: $packageDir"
-    println ""
-
-    tasks.withType(JavaCompile) { options.compilerArgs << "-parameters" }
-
-    dependencies {
-        // *****************************
-        // GENERATE SKINS (PackTextures)
-        // *****************************
-        //api "com.badlogicgames.gdx:gdx-tools:$gdxVersion"
-
-        // ************
-        // REGULAR DEPS
-        // ************
-        api group: "org.lwjgl", name: "lwjgl", version: "$lwjglVersion"
-        api group: "org.lwjgl", name: "lwjgl-glfw", version: "$lwjglVersion"
-        api group: "org.lwjgl", name: "lwjgl-jemalloc", version: "$lwjglVersion"
-        api group: "org.lwjgl", name: "lwjgl-opengl", version: "$lwjglVersion"
-        api group: "org.lwjgl", name: "lwjgl-openal", version: "$lwjglVersion"
-        
-        api group: "org.lwjgl", name: "lwjgl-openvr", version: "$lwjglVersion"
-        api "org.lwjgl:lwjgl-openvr:$lwjglVersion:natives-linux"
-        api "org.lwjgl:lwjgl-openvr:$lwjglVersion:natives-windows"
-        api "org.lwjgl:lwjgl-openvr:$lwjglVersion:natives-macos"
-
-        api "com.badlogicgames.gdx:gdx:$gdxVersion"
-        api "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
-        api "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
-
-        // Use GDX
-        //api "com.badlogicgames.gdx:gdx-controllers-lwjgl3:$gdxVersion"
-        // Use SDL
-        api "uk.co.electronstudio.sdl2gdx:sdl2gdx:$sdl2gdxVersion"
-
-        api group: "commons-io", name: "commons-io", version: "$commonsioVersion"
-        api "org.apache.commons:commons-compress:$compressVersion"
-        api "com.beust:jcommander:$jcommanderVersion"
-        api "net.jafama:jafama:$jafamaVersion"
-        
-        api group: "net.sf.py4j", name: "py4j", version: "$py4jVersion"
-        api group: "com.github.oshi", name: "oshi-core", version: "$oshiVersion"
-        api group: "org.astrogrid", name: "jsamp", version: "$jsampVersion"
-
-        // ****************
-        // REST SERVER DEPS
-        // ****************
-        api "org.slf4j:slf4j-nop:$slf4jVersion"
-        //api "org.slf4j:slf4j-simple:$slf4jVersion"
-        api "com.sparkjava:spark-core:$sparkjavaVersion"
-        api "com.google.code.gson:gson:$gsonVersion"
-        api "junit:junit:4.12"
-
-        // *************
-        // INTERNAL DEPS
-        // *************
-        api files("lib/stil.jar",
-                "../assets")
-    }
-
-    jar {
-        manifest {
-            attributes "Implementation-Title": "Gaia Sky",
-            "Implementation-Version": archiveVersion
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src']
         }
-        from("../assets") {
-            include "font/main-font.fnt"
-            include "font/main-font.png"
-            include "font/font2d.fnt"
-            include "font/font2d.png"
-            include "font/font-titles.fnt"
-            include "font/font-titles.png"
-            include "icon/gs_icon.png"
-            include "icon/gsvr_icon.png"
-            include "icon/gsascii.txt"
-            include "img/**"
-            include "text/**"
-            exclude "img/splash"
-            include "shader/**"
-            include "shaders/**"
-            include "skins/**"
-            exclude "skins/raw"
-            exclude "assets-bak/**"
-        }
-        from("build/classes/main") { include "**" }
     }
-
 }
 
-task createWrapper(type: Wrapper) { gradleVersion = "5.6.2" }
+project.ext.mainClassName = "gaiasky.desktop.GaiaSkyDesktop"
+project.ext.workDir = new File("../");
+project.ext.assetsDir = new File(project.ext.workDir, "assets");
+project.ext.sourceSets = sourceSets
+
+task versionFile {
+    doLast {
+        File versionFile = file('build/classes/java/main/version')
+        delete versionFile
+        def writer = new FileWriter(versionFile)
+
+        try {
+            writer.write('buildtime=' + project(':core').buildtime + '\n')
+            writer.write('build=' + project(':core').rev + '\n')
+            writer.write('version=' + project(':core').tag + '\n')
+            writer.write('builder=' + project(':core').builder + '\n')
+            writer.write('system=' + project(':core').system + '\n')
+            writer.flush()
+        } finally {
+            writer.close()
+        }
+    }
+}
+
+jar {
+    dependsOn versionFile
+}
+
+install4j {
+    installDir = file('/home/tsagrista/Programs/install4j8')
+}
+
+sourceSets {
+    main {
+        main {
+            output.resourcesDir = project.assetsDir.absolutePath
+        }
+    }
+}
+
+class GaiaSkyRun extends JavaExec {
+    public void setup() {
+        main = project.mainClassName
+        systemProperties['properties.file'] = ''
+        systemProperties['assets.location'] = './assets/'
+        systemProperties['org.slf4j.simpleLogger.defaultLogLevel'] = 'warn'  // logging levels (e.g. REST server warn, info, debug)
+        systemProperties['org.slf4j.simpleLogger.showThreadName'] = 'false'
+
+        minHeapSize = "3g"
+        maxHeapSize = "6g"
+        // Parallel GC
+        //jvmArgs = [ '-XX:+UseParNewGC']
+        // CMS GC
+        //jvmArgs = ['-server', '-XX:+UseConcMarkSweepGC', '-XX:+UseParNewGC', '-XX:MaxGCPauseMillis=5', '-XX:+CMSParallelRemarkEnabled', '-XX:CMSInitiatingOccupancyFraction=60', '-XX:MaxTenuringThreshold=4', '-XX:MaxNewSize=384m', '-XX:NewSize=384m', '-XX:SurvivorRatio=12']
+        // G1 GC
+        jvmArgs "-XX:+UseG1GC"
+        if (System.getProperty("os.name").toLowerCase().contains("mac")) {
+            // Required to run lwjgl3 java apps on macOS
+            jvmArgs("-XstartOnFirstThread")
+        }
+        // Verbose GC
+        // jvmArgs = ['-verbose:gc']
+        classpath = project.ext.sourceSets.main.runtimeClasspath
+        classpath += project.files(project.ext.assetsDir)
+        standardInput = System.in
+        workingDir = project.ext.workDir
+        ignoreExitValue = true
+
+    }
+}
+
+task run(dependsOn: jar, type: GaiaSkyRun, description: "Runs Gaia Sky") {
+    setup()
+}
+
+task runvr(dependsOn: jar, type: GaiaSkyRun, description: "Runs Gaia Sky VR") {
+    setup()
+    args = ['-vr']
+}
+
+task rund(dependsOn: jar, type: GaiaSkyRun, description: "Runs Gaia Sky showing the download manager at startup") {
+    setup()
+    args = ['-d']
+}
+
+task runc(dependsOn: jar, type: GaiaSkyRun, description: "Runs Gaia Sky showing the catalog chooser at startup") {
+    setup()
+    args = ['-c']
+}
+
+task rune(dependsOn: jar, type: GaiaSkyRun, description: "Runs Gaia Sky with an external view") {
+    setup()
+    args = ['-e']
+}
+
+task runCatalogFilter(dependsOn: jar, type: JavaExec, description: "Runs the catalog filter application to generate day catalogs for WebGL") {
+    main = 'gaiasky.data.GaiaCatalogFilter'
+    classpath = sourceSets.main.runtimeClasspath
+    classpath += files(project.assetsDir)
+    standardInput = System.in
+    workingDir = project.workDir
+    ignoreExitValue = true
+}
+
+task runOctreeGenerator(dependsOn: jar, type: JavaExec, description: "Runs the octree generator with star groups to create the lod structure from a base catalog") {
+    main = 'gaiasky.data.OctreeGeneratorRun'
+    systemProperties['properties.file'] = '../..//assets/conf/global.properties'
+    args = [
+            "--input",
+            "/media/tsagrista/Daten/Gaia/data/GDR2/dr2/csv/",
+            "--output",
+            "/media/tsagrista/Daten/Gaia/data/GDR2/dr2/out/"
+    ]
+
+    minHeapSize = "10g"
+    maxHeapSize = "20g"
+
+    jvmArgs = ['-server',]
+
+    classpath = sourceSets.main.runtimeClasspath
+    classpath += files(project.assetsDir)
+    standardInput = System.in
+    workingDir = project.workDir
+    ignoreExitValue = true
+}
+
+task runGalaxyGenerator(dependsOn: jar, type: JavaExec, description: "Runs the galaxy generator to procedurally generate a galaxy") {
+    main = 'gaiasky.data.galaxy.GalaxyGenerator'
+    systemProperties['properties.file'] = '../assets/conf/global.properties'
+    classpath = sourceSets.main.runtimeClasspath
+    classpath += files(project.assetsDir)
+    standardInput = System.in
+    workingDir = project.workDir
+    ignoreExitValue = true
+}
+
+task createDistDir(description: "Creates the releases/dist folder") {
+    doLast {
+        File distDir = new File(project.distDir)
+        // Prepare output directory
+        delete distDir
+        mkdir distDir
+    }
+}
+
+task copyToLib(dependsOn: createDistDir, description: "Copies the runtime dependencies to releases/dist/lib") {
+    doLast {
+        // Create releases/dist/lib
+        File distLib = new File(project.distDir, 'lib')
+        mkdir distLib
+        project.ext.distLib = distLib.getPath()
+
+        // Copy deps to dist lib folder
+        ['runtimeClasspath'].each { mode ->
+            copy {
+                from configurations.getByName(mode).files
+                into project.distLib
+                exclude "**/data"
+                exclude "**/assets-bak"
+                exclude "**/core-" + version + ".jar"
+                exclude "dummyversion"
+            }
+        }
+
+        // Remove folders
+        delete project.distLib + '/conf'
+        delete project.distLib + '/data'
+        delete project.distLib + '/font'
+        delete project.distLib + '/i18n'
+        delete project.distLib + '/icon'
+        delete project.distLib + '/img'
+        delete project.distLib + '/music'
+        delete project.distLib + '/mappings'
+        delete project.distLib + '/bookmarks'
+        delete project.distLib + '/rest-static'
+        delete project.distLib + '/scripts'
+        delete project.distLib + '/shader'
+        delete project.distLib + '/shaders'
+        delete project.distLib + '/skins'
+        delete project.distLib + '/text'
+    }
+}
+
+task gaiaskyJar(dependsOn: [compileJava, jar, copyToLib], description: "Creates the gaiasky jar and puts it to the dist folder") {
+    doLast {
+        copy {
+            from "$baseDir/core/build/libs/core-" + version + ".jar"
+            into "$distLib/"
+        }
+        file("$distLib/core-" + version + ".jar").renameTo(file("$distLib/gaiasky-core.jar"))
+    }
+}
+
+task execPermission(type: Exec) {
+    commandLine 'chmod', 'ugo+x', "$distDir/gaiasky"
+}
+
+task dist(dependsOn: gaiaskyJar, description: "Compiles the project, creates the jar and moves it all to releases/gaiasky-\$tag-\$rev") {
+    doLast {
+        // Version check
+        String vsc = "${System.env.GS_JAVA_VERSION_CHECK}"
+        boolean javaVersionOk = JavaVersion.current().isJava11Compatible()
+        if (vsc.equalsIgnoreCase("false")) {
+            if (!javaVersionOk) {
+                println("WARNING: Gaia Sky must be built with Java " + JavaVersion.VERSION_11 + " or compatible, you are using " + JavaVersion.current())
+            }
+        } else {
+            if (!javaVersionOk) {
+                print("FAILURE: Do 'export GS_JAVA_VERSION_CHECK=false' to skip this check")
+                throw new GradleException("Gaia Sky must be built with java " + JavaVersion.VERSION_11 + " or compatible, you are using " + JavaVersion.current())
+            }
+        }
+
+        if (javaVersionOk) {
+            println("OK: Building with Java " + JavaVersion.current())
+        }
+
+        // Copy conf
+        mkdir "$distDir/conf"
+        copy {
+            from "$baseDir/assets/conf"
+            into "$distDir/conf"
+        }
+
+        // Copy i18n files
+        mkdir "$distDir/i18n"
+        copy {
+            from "$baseDir/assets/i18n"
+            into "$distDir/i18n"
+        }
+
+        // Copy music
+        mkdir "$distDir/music"
+        copy {
+            from "../assets/music"
+            into "$distDir/music"
+        }
+
+        // Copy mappings
+        mkdir "$distDir/mappings"
+        copy {
+            from "../assets/mappings"
+            into "$distDir/mappings"
+        }
+
+        // Copy bookmarks
+        mkdir "$distDir/bookmarks"
+        copy {
+            from "../assets/bookmarks"
+            into "$distDir/bookmarks"
+        }
+
+        // Copy rest-static
+        mkdir "$distDir/rest-static"
+        copy {
+            from "../assets/rest-static"
+            into "$distDir/rest-static"
+        }
+
+        // Copy script files
+        mkdir "$distDir/scripts"
+        copy {
+            from "$baseDir/assets/scripts"
+            into "$distDir/scripts"
+        }
+
+        // Copy scripts, README, LICENSE and AUTHORS
+        copy {
+            from "exe"
+            into "$distDir"
+            exclude "octreegen"
+        }
+        copy {
+            from "$baseDir/"
+            into "$distDir"
+            include "README.md"
+            include "VR.md"
+            include "LICENSE"
+            include "AUTHORS"
+        }
+        copy {
+            from "$baseDir/assets/icon"
+            into "$distDir"
+            include "gs_icon.png"
+            include "gs_icon.ico"
+            include "gs_icon.svg"
+            include "gsvr_icon.png"
+            include "gsvr_icon.ico"
+        }
+
+        // Replace version in readme file
+        project.ext.versionFile = file("build/classes/java/main/version").text
+        ant.replace(file: "$distDir/README.md", token: "--------------------------", value: "$versionFile")
+
+        // Give execute
+        execPermission.exec()
+
+        // Generate man
+        println("Generate man: $distDir/gaiasky.6.gz")
+        exec {
+            commandLine "help2man", "-N", "--section=6", "--include", "$baseDir/core/man/gaiasky.h2m", "--output=$distDir/gaiasky.6", "$distDir/gaiasky"
+        }
+        exec {
+            commandLine "gzip", "$distDir/gaiasky.6"
+        }
+    }
+}
+dist.dependsOn classes
+
+
+task createTar(dependsOn: dist, description: "Creates application tar package") {
+    doLast {
+        File packageDir = new File(project.packageDir)
+
+        delete packageDir
+        mkdir packageDir
+
+        ant.tar(destfile: "$packageDir/" + project.distName + ".tar.gz", compression: 'gzip', longfile: 'gnu') {
+            tarfileset(dir: "$releasesDir") {
+                include(name: "$distName/**")
+                exclude(name: "$distName/gaiasky")
+            }
+            tarfileset(dir: "$releasesDir", filemode: '755') {
+                include(name: "$distName/gaiasky")
+            }
+        }
+    }
+}
+
+task createArch(dependsOn: createTar, description: "Copies Arch Linux AUR build scripts PKGBUILD and gaiasky.install and replaces version and md5") {
+    doLast {
+        File archDir = new File(project.packageDir + "/arch/")
+        mkdir archDir
+        copy {
+            from "installerscripts/arch"
+            into "$packageDir/arch"
+        }
+
+        File tarFile = new File("$packageDir/" + project.distName + ".tar.gz")
+        ant.checksum(file: tarFile, algorithm: "md5", todir: "$packageDir/")
+
+        String md5Tar = new File("$packageDir/" + project.distName + ".tar.gz.md5").text
+        md5Tar = md5Tar.replace("\n", "").replace("\r", "");
+
+        String tagRevEscaped = "$tagRev"
+        tagRevEscaped = tagRevEscaped.replace(":", "_").replace("/", "_").replace("-", "_").replace(" ", "_");
+
+        ant.replace(file: "$packageDir/arch/PKGBUILD", token: '@version.revision@', value: "$tagRev")
+        ant.replace(file: "$packageDir/arch/PKGBUILD", token: '@version.revision.escaped@', value: "$tagRevEscaped")
+        ant.replace(file: "$packageDir/arch/PKGBUILD", token: '@md5checksum@', value: md5Tar)
+
+        copy {
+            from "$baseDir/CHANGELOG.md"
+            into "$packageDir/arch/"
+        }
+
+        // Run makepkg to create .SRCINFO
+        //exec {
+        // 	executable "makepkg"
+        //	args "--printsrcinfo",">","$packageDir/arch/.SRCINFO"
+        //}
+    }
+}
+
+def buildTime() {
+    return new Date()
+}
+
+def distDirSize() {
+    File dist = new File(project.distDir)
+    return Math.round(dist.directorySize() / 1024)
+}
+
+task createDeb(dependsOn: createArch, description: "Creates the .deb package") {
+    doLast {
+        // Base deb directory
+        File debDir = new File(project.packageDir + "/$distName")
+        // Opt dir
+        File debOptDir = new File(project.packageDir + "/$distName/opt/gaiasky")
+        mkdir debOptDir
+        // DEBIAN directory
+        File debDEBIANDir = new File(project.packageDir + "/$distName/DEBIAN")
+        mkdir debDEBIANDir
+
+        copy {
+            from "installerscripts/debian"
+            into "$packageDir/$distName/DEBIAN"
+        }
+
+        ant.replace(file: "$packageDir/$distName/DEBIAN/control", token: '@version.revision@', value: "$tagRev")
+        ant.replace(file: "$packageDir/$distName/DEBIAN/control", token: '@installedsize@', value: "${distDirSize()}")
+        ant.replace(file: "$packageDir/$distName/DEBIAN/control", token: '@date@', value: "${buildTime()}")
+
+        copy {
+            from "$distDir"
+            into "$packageDir/$distName/opt/gaiasky/"
+        }
+
+        // Create deb
+        exec {
+            executable "dpkg-deb"
+            args "--build", "$packageDir/$distName"
+        }
+
+        // Remove temp dir directory
+        delete debDir
+    }
+}
+
+task prepareInstall4jScript(dependsOn: createArch, description: "Prepares the install4j script and copies it to the packages folder") {
+    doLast {
+        copy {
+            from "installerscripts/template.install4j"
+            into "$packageDir"
+        }
+        file("$packageDir/template.install4j").renameTo(file("$packageDir/" + project.distName + ".install4j"))
+
+        project.ext.releaseFolder = "$baseDir/releases/$distName"
+
+        ant.replace(file: "$packageDir/" + project.distName + ".install4j", token: '@gs-release-folder@', value: "$distDir")
+        ant.replace(file: "$packageDir/" + project.distName + ".install4j", token: '@gs-git-folder@', value: "$baseDir")
+        ant.replace(file: "$packageDir/" + project.distName + ".install4j", token: '@version-tag@', value: "$tagRev")
+    }
+}
+
+task install4jMedia(type: com.install4j.gradle.Install4jTask, description: "Runs the install4j task to create the installers") {
+    dependsOn 'prepareInstall4jScript'
+
+    doLast {
+        print("$packageDir/" + project.distName + ".install4j")
+    }
+    projectFile = file("$packageDir/" + project.distName + ".install4j")
+    variables = [majorVersion: project.tag, build: project.rev]
+}
+
+
+task pack(dependsOn: install4jMedia, description: "Creates the releases for windows, mac, linux and the tar package") {
+    doLast {
+        println("Appending md5 checksum of " + project.distName + ".tar.gz to md5sums file")
+        File md5File = file("$packageDir/" + 'md5sums')
+        if(md5File.exists()) {
+            String md5Tar = file("$packageDir/" + project.distName + ".tar.gz.md5").text
+            md5Tar = md5Tar.replace("\n", "").replace("\r", "");
+            md5File.text = file("$packageDir/" + 'md5sums').text + md5Tar + " *" + project.distName + ".tar.gz\n"
+            println("Removing file " + project.distName + ".tar.gz.md5")
+            file("$packageDir/" + project.distName + ".tar.gz.md5").delete()
+        } else {
+            println("md5 file not found: " + md5File)
+        }
+
+    }
+}
+
+eclipse {
+    project {
+        name = appName.toLowerCase() + "-core"
+        linkedResource name: 'assets', type: '2', location: 'PARENT-1-PROJECT_LOC/assets'
+    }
+}
+
+task afterEclipseImport(description: "Post processing after project generation", group: "IDE") {
+    doLast {
+        def classpath = new XmlParser().parse(file(".classpath"))
+        new Node(classpath, "classpathentry", [kind: 'src', path: 'assets']);
+        def writer = new FileWriter(file(".classpath"))
+        def printer = new XmlNodePrinter(new PrintWriter(writer))
+        printer.setPreserveWhitespace(true)
+        printer.print(classpath)
+    }
+}
